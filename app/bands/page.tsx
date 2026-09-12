@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import BandCard from "@/app/components/BandCard";
+import SpotifyTracksModal from "@/app/components/SpotifyTracksModal";
 import type { Band } from "@/app/types/band";
 
 type SortOption = "name" | "year";
@@ -14,6 +15,7 @@ const bands: Band[] = [
     description: "วงดนตรีดูโอจากประเทศไทย",
     image: "/images/bands/mirr.jpg",
     foundedYear: 2018,
+    spotifyId: "5zSQoNQ9o2dnT1LPTzDxg7",
     members: [
       {
         name: "นาว",
@@ -26,6 +28,12 @@ const bands: Band[] = [
         image: "/images/bands/mirrr_02.jpg",
       },
     ],
+    fallbackTracks: [
+      "ดอกไม้ไฟ (Fireworks)",
+      "นิโคติน (Nicotine)",
+      "กี่เหตุผล (1000 Reasons)",
+      "เกม (Your Rules)",
+    ],
   },
 
   {
@@ -36,6 +44,7 @@ const bands: Band[] = [
       "วงดนตรีไทยแนว Indie Pop ที่มีเอกลักษณ์ด้านเสียงเพลงและบรรยากาศของเพลง",
     image: "/images/bands/dept.jpg",
     foundedYear: 2015,
+    spotifyId: "48JtfAggQQpfUXQNxkGm5U",
     members: [
       {
         name: "ลุค ทศพล",
@@ -48,6 +57,12 @@ const bands: Band[] = [
         image: "/images/bands/benz.png",
       },
     ],
+    fallbackTracks: [
+      "17",
+      "ฟ้ามืดทีไร",
+      "ประกาศให้โลกรู้ (Shoutout)",
+      "หมดนี้ให้เธอ (All In)",
+    ],
   },
 
   {
@@ -58,6 +73,7 @@ const bands: Band[] = [
     "วงดนตรีดูโอแนวป๊อปฟีลกู๊ด เจ้าของเพลงฮิตดาวหางฮัลเลย์",
   image: "/images/bands/fellow-fellow.jpg",
   foundedYear: 2016,
+  spotifyId: "2nOc0WXqsAyy2GuIdlW37c",
   members: [
     {
       name: "ข้าว - ปณิธิ เลิศอุดมธนา",
@@ -69,6 +85,12 @@ const bands: Band[] = [
       role: "กีตาร์และร้องประสาน",
       image: "/images/bands/fellow-tee.jpg",
     },
+  ],
+  fallbackTracks: [
+    "ดาวหางฮัลเลย์ (Halley's Comet)",
+    "ฉันคือความทรงจำดีๆ ของเธอรึเปล่า",
+    "Proud",
+    "ยิ้มง่าย (Better Together)",
   ],
 },
 ];
@@ -85,6 +107,9 @@ export default function BandsPage() {
 
   // เงื่อนไขการเรียง
   const [sortBy, setSortBy] = useState<SortOption>("name");
+
+  // วงที่กำลังเปิดดูเพลง (สำหรับ modal)
+  const [selectedBand, setSelectedBand] = useState<Band | null>(null);
 
   // Filter วงตามชื่อ
   const filteredBands = bands.filter((band) =>
@@ -129,7 +154,10 @@ export default function BandsPage() {
     <main className="bands-page">
       {/* Header */}
       <section className="bands-hero">
-        <p className="eyebrow">MY MUSIC COLLECTION</p>
+        <div className="reel-row" aria-hidden="true">
+          <span className="reel" />
+          <p className="eyebrow">MY MUSIC COLLECTION — SIDE A</p>
+        </div>
 
         <h1>Favorite Bands</h1>
 
@@ -227,9 +255,17 @@ export default function BandsPage() {
               likeCount={likes[band.id] || 0}
               onFollow={() => handleFollow(band.id)}
               onLike={() => handleLike(band.id)}
+              onShowTracks={() => setSelectedBand(band)}
             />
           ))}
         </section>
+      )}
+
+      {selectedBand && (
+        <SpotifyTracksModal
+          band={selectedBand}
+          onClose={() => setSelectedBand(null)}
+        />
       )}
     </main>
   );

@@ -7,6 +7,7 @@ type BandCardProps = {
   likeCount: number;
   onFollow: () => void;
   onLike: () => void;
+  onShowTracks: () => void;
 };
 
 export default function BandCard({
@@ -15,6 +16,7 @@ export default function BandCard({
   likeCount,
   onFollow,
   onLike,
+  onShowTracks,
 }: BandCardProps) {
   return (
     <article className="band-card">
@@ -65,6 +67,13 @@ export default function BandCard({
             onClick={onLike}
           >
             ❤️ Like {likeCount}
+          </button>
+
+          <button
+            className="tracks-btn"
+            onClick={onShowTracks}
+          >
+            🎵 ฟังเพลง
           </button>
         </div>
 
