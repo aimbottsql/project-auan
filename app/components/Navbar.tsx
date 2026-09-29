@@ -7,6 +7,7 @@ export default function Navbar() {
       <Link href="/courses">Courses</Link>
       <Link href="/about">About</Link>
       <Link href="/bands">Favorite Bands</Link>
+      <Link href="/games">Game Backlog</Link>
     </nav>
   );
 }

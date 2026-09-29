@@ -13,6 +13,8 @@ export type SpotifyTrack = {
   previewUrl: string | null;
   spotifyUrl: string;
   durationMs: number;
+  // Spotify track ID จริง (ถ้าหาแมตช์บน Spotify เจอ) เอาไว้ฝัง embed player เล่นในหน้าเว็บได้เลย
+  spotifyTrackId?: string | null;
 };
 
 export type SpotifyArtistResult = {
@@ -66,15 +68,6 @@ async function getAccessToken(): Promise<string> {
   return cachedToken.accessToken;
 }
 
-type RawSpotifyTrack = {
-  id: string;
-  name: string;
-  duration_ms: number;
-  album?: { images?: { url: string }[] };
-  preview_url?: string | null;
-  external_urls?: { spotify?: string };
-};
-
 async function spotifyFetch(path: string) {
   const token = await getAccessToken();
 
@@ -109,21 +102,49 @@ export async function searchArtist(
   };
 }
 
-// ดึงเพลงฮิตของศิลปิน (สูงสุด 10 เพลง)
-export async function getArtistTopTracks(
-  artistId: string,
-  market = "TH"
-): Promise<SpotifyTrack[]> {
-  const data = await spotifyFetch(
-    `/artists/${artistId}/top-tracks?market=${market}`
-  );
+// ดึงข้อมูลศิลปินด้วย Spotify artist ID ตรงๆ (แม่นยำกว่า search เพราะรู้ ID อยู่แล้ว)
+export async function getArtistById(
+  artistId: string
+): Promise<SpotifyArtistResult | null> {
+  const artist = await spotifyFetch(`/artists/${artistId}`);
 
-  return (data.tracks ?? []).map((track: RawSpotifyTrack) => ({
+  if (!artist?.id) return null;
+
+  return {
+    id: artist.id,
+    name: artist.name,
+    image: artist.images?.[0]?.url ?? null,
+    spotifyUrl: artist.external_urls?.spotify ?? "",
+  };
+}
+
+// หมายเหตุ: Spotify ปิด endpoint "/artists/{id}/top-tracks" ให้เฉพาะแอปที่ได้ Extended
+// Quota Mode ตั้งแต่ พ.ย. 2024 เป็นต้นมา แอป client-credentials ทั่วไปจะโดน 403 เสมอ
+// เพลงฮิตจริงจึงไปดึงจาก Last.fm แทน (ดู app/lib/lastfm.ts) ส่วนตรงนี้ใช้ /search (ยังใช้ได้)
+// หาเพลงที่ตรงกับชื่อนั้นบน Spotify เพื่อเอา track ID จริงมาฝัง embed player ให้กดฟังในหน้าเว็บได้เลย
+export async function findTrack(
+  trackName: string,
+  artistName: string
+): Promise<{
+  id: string;
+  albumImage: string | null;
+  spotifyUrl: string;
+  previewUrl: string | null;
+  durationMs: number;
+} | null> {
+  const query = encodeURIComponent(`track:${trackName} artist:${artistName}`);
+  const data = await spotifyFetch(`/search?q=${query}&type=track&limit=1`);
+  const track = data.tracks?.items?.[0];
+
+  if (!track) return null;
+
+  return {
     id: track.id,
-    name: track.name,
     albumImage: track.album?.images?.[0]?.url ?? null,
-    previewUrl: track.preview_url ?? null,
     spotifyUrl: track.external_urls?.spotify ?? "",
+    // Spotify ปิดการแจก preview_url (30 วิ) ให้แอปทั่วไปไปพร้อมๆกับ top-tracks แล้วเช่นกัน
+    // ปัจจุบันจึงมักได้ null เสมอ แต่เผื่อ Spotify กลับมาเปิดให้ในอนาคตก็ยังใช้ได้ทันที
+    previewUrl: track.preview_url ?? null,
     durationMs: track.duration_ms,
-  }));
+  };
 }
