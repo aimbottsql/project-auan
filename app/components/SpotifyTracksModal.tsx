@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Band } from "@/app/types/band";
 import type { SpotifyTrack, SpotifyArtistResult } from "@/app/lib/spotify";
 
@@ -33,9 +33,8 @@ export default function SpotifyTracksModal({
 }: SpotifyTracksModalProps) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
-  // เสียงของตัวเล่น preview (ตอน API เราใช้งานได้)
-  const [previewVolume, setPreviewVolume] = useState(0.8);
-  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
+  // เพลงที่กำลังกดฟัง (โชว์ embed player ของ Spotify แบบฝังในหน้านี้เลย ทีละเพลง)
+  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,7 +54,7 @@ export default function SpotifyTracksModal({
         const data = await response.json();
 
         if (!response.ok) {
-          if (band.fallbackTracks && band.fallbackTracks.length > 0) {
+          if (band.spotifyId || (band.fallbackTracks && band.fallbackTracks.length > 0)) {
             setState({
               status: "fallback",
               reason: data.error ?? "โหลดเพลงจาก Spotify ไม่สำเร็จ",
@@ -78,7 +77,7 @@ export default function SpotifyTracksModal({
       } catch (error) {
         if ((error as Error).name === "AbortError") return;
 
-        if (band.fallbackTracks && band.fallbackTracks.length > 0) {
+        if (band.spotifyId || (band.fallbackTracks && band.fallbackTracks.length > 0)) {
           setState({
             status: "fallback",
             reason: "เชื่อมต่อ Spotify ไม่สำเร็จ",
@@ -97,13 +96,6 @@ export default function SpotifyTracksModal({
 
     return () => controller.abort();
   }, [band]);
-
-  function handlePreviewVolumeChange(value: number) {
-    setPreviewVolume(value);
-    audioRefs.current.forEach((audioEl) => {
-      audioEl.volume = value;
-    });
-  }
 
   return (
     <div className="spotify-modal-overlay" onClick={onClose}>
@@ -170,24 +162,6 @@ export default function SpotifyTracksModal({
 
         {state.status === "success" && state.tracks.length > 0 && (
           <>
-            {state.tracks.some((track) => track.previewUrl) && (
-              <div className="volume-control">
-                <span>🔉</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={previewVolume}
-                  onChange={(event) =>
-                    handlePreviewVolumeChange(Number(event.target.value))
-                  }
-                  aria-label="ปรับระดับเสียง"
-                />
-                <span>🔊</span>
-              </div>
-            )}
-
             <ul className="spotify-track-list">
               {state.tracks.map((track) => (
                 <li key={track.id} className="spotify-track">
@@ -211,24 +185,45 @@ export default function SpotifyTracksModal({
                       src={track.previewUrl}
                       preload="none"
                       ref={(el) => {
-                        if (el) {
-                          el.volume = previewVolume;
-                          audioRefs.current.set(track.id, el);
-                        } else {
-                          audioRefs.current.delete(track.id);
-                        }
+                        if (el) el.volume = 0.8;
                       }}
                     />
                   )}
 
-                  <a
-                    href={track.spotifyUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="spotify-track-link"
-                  >
-                    เปิดใน Spotify ↗
-                  </a>
+                  {track.spotifyTrackId ? (
+                    <button
+                      type="button"
+                      className="spotify-track-play-btn"
+                      onClick={() =>
+                        setPlayingTrackId((current) =>
+                          current === track.id ? null : track.id
+                        )
+                      }
+                    >
+                      {playingTrackId === track.id ? "ปิดเพลง ✕" : "▶ ฟังเพลงนี้"}
+                    </button>
+                  ) : (
+                    <a
+                      href={track.spotifyUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="spotify-track-link"
+                    >
+                      ค้นหาใน Spotify ↗
+                    </a>
+                  )}
+
+                  {playingTrackId === track.id && track.spotifyTrackId && (
+                    <iframe
+                      title={`เล่นเพลง ${track.name}`}
+                      src={`https://open.spotify.com/embed/track/${track.spotifyTrackId}?utm_source=generator&theme=0`}
+                      width="100%"
+                      height="152"
+                      style={{ borderRadius: 12, border: "none" }}
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                    />
+                  )}
                 </li>
               ))}
             </ul>
